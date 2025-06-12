@@ -1,0 +1,14 @@
+{
+  "appId": "com.spidy.chatbot",
+  "appName": "Spidy",
+  "webDir": "build",
+  "plugins": {
+    "App": {
+      "launchUrl": "https://Jeevanpranav-23.github.io/spidy-chatbot"
+    }
+  },
+  "server": {
+    "url": "http://localhost:3000",
+    "cleartext": true
+  }
+}
