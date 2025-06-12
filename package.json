@@ -11,4 +11,4 @@
   "deploy": "gh-pages -d build",
   "build": "react-scripts build"
 }
-}
+
