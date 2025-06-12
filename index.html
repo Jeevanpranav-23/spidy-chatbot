@@ -1,37 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <meta name="theme-color" content="#000000" />
-  <meta name="description" content="Spidy Chatbot with App Integration"/>
-  <title>Spidy-Chatbot</title>
-  <!-- Add iOS specific meta tags for better mobile experience -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <!-- Add CSS reset/normalize for consistent rendering across devices -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spidy - Voice Assistant</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="root"></div>
-
-  <!-- Load React and other libraries -->
-  <script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/@mui/material@5.14.14/umd/material-ui.development.js"></script>
-  <script src="https://unpkg.com/react-speech-recognition@3.10.0/dist/index.js"></script>
-  
-  <!-- Load our JavaScript -->
-  <script src="script.js" type="text/babel"></script>
-  
-  <!-- Add a fallback for browsers that don't support speech recognition -->
-  <script>
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.warn('Speech recognition not supported in this browser');
-      // You might want to show a message to the user or provide alternative input
-    }
-  </script>
+  <div class="assistant-container">
+    <div class="assistant-header">
+      <h1><i class="fas fa-robot"></i> Spidy Assistant</h1>
+      <p>Say "Spidy" to activate</p>
+    </div>
+    <div class="assistant-status" id="status">
+      <i class="fas fa-microphone-slash"></i> Offline
+    </div>
+    <div class="assistant-response" id="response">
+      <p>Waiting for your command...</p>
+    </div>
+    <button id="micButton" class="mic-button">
+      <i class="fas fa-microphone"></i>
+    </button>
+  </div>
+  <script src="script.js"></script>
 </body>
 </html>
