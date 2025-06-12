@@ -1,217 +1,184 @@
-// Import React hooks
-const { useState, useEffect } = React;
+// DOM Elements
+const statusElement = document.getElementById('status');
+const responseElement = document.getElementById('response');
+const micButton = document.getElementById('micButton');
 
-// Destructure Material-UI components
-const {
-  Button,
-  Box,
-  Typography,
-  Paper,
-  CircularProgress,
-  Chip,
-  createTheme,
-  ThemeProvider
-} = MaterialUI;
+// Check browser support
+if (!('webkitSpeechRecognition' in window)) {
+  statusElement.innerHTML = "⚠️ Voice commands not supported (Use Chrome/Edge)";
+  micButton.disabled = true;
+} else {
+  const recognition = new webkitSpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
 
-// Destructure speech recognition
-const { useSpeechRecognition, SpeechRecognition } = ReactSpeechRecognition;
+  // Speech Synthesis
+  const synth = window.speechSynthesis;
 
-// Common app deep links
-const APP_LINKS = {
-  youtube: {
-    web: 'https://youtube.com',
-    mobile: 'youtube://',
-    commands: ['open youtube', 'play * on youtube']
-  },
-  spotify: {
-    web: 'https://open.spotify.com',
-    mobile: 'spotify://',
-    commands: ['open spotify', 'play * on spotify']
-  },
-  whatsapp: {
-    web: 'https://web.whatsapp.com',
-    mobile: 'whatsapp://',
-    commands: ['open whatsapp', 'message * on whatsapp']
-  },
-  maps: {
-    web: 'https://maps.google.com',
-    mobile: 'geo://',
-    commands: ['open maps', 'navigate to *']
-  },
-  phone: {
-    mobile: 'tel:',
-    commands: ['call *', 'dial *']
-  },
-  messages: {
-    mobile: 'sms:',
-    commands: ['text *', 'message *']
+  // Wake word and states
+  const WAKE_WORD = "spidy";
+  let isAwake = false;
+  let lastActivity = Date.now();
+
+  // Update UI status
+  function updateStatus(text, icon = "fa-microphone-slash", color = "") {
+    statusElement.innerHTML = `<i class="fas ${icon}"></i> ${text}`;
+    if (color) statusElement.style.color = color;
   }
-};
 
-function App() {
-  const [botResponse, setBotResponse] = useState('');
-  const [pulse, setPulse] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [speechSynthesis, setSpeechSynthesis] = useState(null);
-
-  useEffect(() => {
-    // Check if browser is mobile
-    setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+  // Make the bot speak
+  function speak(text, priority = false) {
+    if (synth.speaking && !priority) return;
     
-    // Initialize speech synthesis
-    if ('speechSynthesis' in window) {
-      setSpeechSynthesis(window.speechSynthesis);
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => {
+      if (Date.now() - lastActivity > 30000) { // 30s inactivity timeout
+        updateStatus("Sleeping", "fa-moon", "#aaa");
+      }
+    };
+    synth.speak(utterance);
+    responseElement.innerHTML = `<p>${text}</p>`;
+    lastActivity = Date.now();
+  }
+
+  // Process commands (OK Google-like features)
+  function processCommand(command) {
+    command = command.toLowerCase().trim();
+    console.log("Processing:", command);
+
+    // 1. Website Opening
+    if (command.match(/open (youtube|google|gmail|maps|drive)/)) {
+      const site = command.match(/open (youtube|google|gmail|maps|drive)/)[1];
+      const urls = {
+        youtube: "https://youtube.com",
+        google: "https://google.com",
+        gmail: "https://mail.google.com",
+        maps: "https://maps.google.com",
+        drive: "https://drive.google.com"
+      };
+      window.open(urls[site], '_blank');
+      speak(`Opening ${site}`);
     }
-  }, []);
-
-  // Generate commands dynamically
-  const generateCommands = () => {
-    return Object.entries(APP_LINKS).flatMap(([app, config]) => {
-      return config.commands.map(command => ({
-        command,
-        callback: (param) => handleAppLaunch(app, param, command),
-        isFuzzyMatch: true,
-        matchInterim: true
-      }));
-    });
-  };
-
-  const {
-    transcript,
-    listening,
-    resetTranscript,
-    browserSupportsSpeechRecognition
-  } = useSpeechRecognition({ commands: generateCommands() });
-
-  const speak = (text) => {
-    setBotResponse(text);
-    if (speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      speechSynthesis.speak(utterance);
-    }
-  };
-
-  const handleAppLaunch = (app, param, originalCommand) => {
-    const appConfig = APP_LINKS[app];
-    let url = '';
     
-    // Handle special parameters
-    if (originalCommand.includes('*')) {
-      if (app === 'phone') url = `tel:${param}`;
-      else if (app === 'messages') url = `sms:${param}`;
-      else if (app === 'maps') url = `https://www.google.com/maps/search/${encodeURIComponent(param)}`;
-      else if (app === 'whatsapp') url = `https://wa.me/${param}`;
-      else if (app === 'youtube') url = `https://youtube.com/results?search_query=${encodeURIComponent(param)}`;
-      else if (app === 'spotify') url = `https://open.spotify.com/search/${encodeURIComponent(param)}`;
-    } else {
-      url = isMobile ? appConfig.mobile : appConfig.web || appConfig.mobile;
+    // 2. Search Commands
+    else if (command.match(/(search|look up) (.+)/)) {
+      const query = command.split(/(search|look up)/)[2].trim();
+      window.open(`https://google.com/search?q=${encodeURIComponent(query)}`, '_blank');
+      speak(`Searching for ${query}`);
     }
-
-    speak(`Opening ${app} ${param ? `for ${param}` : ''}`);
-    launchApp(url);
-  };
-
-  const launchApp = (url) => {
-    // Try native launch
-    if (window.Capacitor?.Plugins?.App) {
-      window.Capacitor.Plugins.App.openUrl({ url });
-    } 
-    // Fallback for web
+    
+    // 3. Time/Date
+    else if (command.includes('time')) {
+      const time = new Date().toLocaleTimeString();
+      speak(`It's ${time}`);
+    }
+    else if (command.includes('date')) {
+      const date = new Date().toLocaleDateString();
+      speak(`Today is ${date}`);
+    }
+    
+    // 4. Calculator
+    else if (command.match(/(calculate|what is) (.+)/)) {
+      try {
+        const expr = command.split(/(calculate|what is)/)[2].trim();
+        const result = eval(expr.replace(/x/g, '*').replace(/÷/g, '/'));
+        speak(`${expr} equals ${result}`);
+      } catch {
+        speak("I couldn't calculate that");
+      }
+    }
+    
+    // 5. Navigation
+    else if (command.includes('navigate to') || command.includes('directions to')) {
+      const location = command.split(/to (.+)/)[1];
+      window.open(`https://maps.google.com?q=${encodeURIComponent(location)}`, '_blank');
+      speak(`Getting directions to ${location}`);
+    }
+    
+    // 6. Jokes
+    else if (command.includes('tell me a joke')) {
+      const jokes = [
+        "Why don't scientists trust atoms? Because they make up everything!",
+        "Parallel lines have so much in common... it's a shame they'll never meet."
+      ];
+      speak(jokes[Math.floor(Math.random() * jokes.length)]);
+    }
+    
+    // 7. Weather (placeholder - would need API in real implementation)
+    else if (command.includes('weather')) {
+      const location = command.split(/weather (in|at|for)?/)[2]?.trim() || "your location";
+      speak(`I'd normally check the weather in ${location}, but you need a weather API for this.`);
+    }
+    
+    // 8. System Commands
+    else if (command.includes('scroll down')) {
+      window.scrollBy(0, 200);
+      speak("Scrolled down");
+    }
+    else if (command.includes('scroll up')) {
+      window.scrollBy(0, -200);
+      speak("Scrolled up");
+    }
+    
+    // 9. Default
     else {
-      window.open(url, '_blank');
+      speak("Try saying: 'Open YouTube', 'Search for cats', or 'What time is it?'");
     }
-  };
-
-  const toggleListening = () => {
-    if (listening) {
-      SpeechRecognition.stopListening();
-      setPulse(false);
-    } else {
-      resetTranscript();
-      setBotResponse('');
-      SpeechRecognition.startListening({ continuous: true });
-      setPulse(true);
-    }
-  };
-
-  if (!browserSupportsSpeechRecognition) {
-    return (
-      <Box className="App">
-        <Paper elevation={3} className="chat-container">
-          <Typography variant="h4" className="spidy-title">Spidy Chatbot</Typography>
-          <Typography variant="body1">Your browser doesn't support speech recognition. Try Chrome or Edge.</Typography>
-        </Paper>
-      </Box>
-    );
   }
 
-  return (
-    <Box className="App">
-      <Paper elevation={3} className={`chat-container ${pulse ? 'pulse' : ''}`}>
-        <Typography variant="h4" className="spidy-title">Spidy Chatbot</Typography>
-        <Typography variant="body2" className="connection-status">
-          {listening ? 'Listening...' : 'Tap microphone to speak'}
-        </Typography>
-        
-        <div className="spidy-icon">🕷️</div>
-        
-        <Box className="transcript-box">
-          <Typography>{transcript || 'Your voice commands will appear here...'}</Typography>
-        </Box>
-        
-        {botResponse && (
-          <Box className="bot-response">
-            <Typography>{botResponse}</Typography>
-          </Box>
-        )}
-        
-        <Button
-          variant="contained"
-          color={listening ? "secondary" : "primary"}
-          onClick={toggleListening}
-          startIcon={listening ? <CircularProgress size={20} color="inherit" /> : null}
-        >
-          {listening ? 'Stop Listening' : 'Start Listening'}
-        </Button>
-        
-        <Box className="supported-apps">
-          <Typography variant="subtitle2">Supported Apps:</Typography>
-          <Box display="flex" flexWrap="wrap" gap={1} mt={1} justifyContent="center">
-            {Object.keys(APP_LINKS).map(app => (
-              <Chip 
-                key={app} 
-                label={app} 
-                color="primary"
-                onClick={() => speak(`Say 'open ${app}' or '${APP_LINKS[app].commands[0]}'`)}
-                style={{ margin: '4px', cursor: 'pointer' }}
-              />
-            ))}
-          </Box>
-        </Box>
-      </Paper>
-    </Box>
-  );
+  // Voice recognition handler
+  recognition.onresult = (event) => {
+    const transcript = Array.from(event.results)
+      .map(result => result[0].transcript)
+      .join('')
+      .toLowerCase();
+
+    if (!isAwake && transcript.includes(WAKE_WORD)) {
+      isAwake = true;
+      updateStatus("Listening...", "fa-microphone", "#4CAF50");
+      micButton.classList.add("listening");
+      speak("Yes? How can I help?", true);
+      return;
+    }
+
+    if (isAwake && event.results[0].isFinal) {
+      processCommand(transcript);
+      isAwake = false;
+      updateStatus("Say 'Spidy'", "fa-microphone-slash", "#6200ea");
+      micButton.classList.remove("listening");
+    }
+  };
+
+  // Error handling
+  recognition.onerror = (event) => {
+    console.error("Recognition error:", event.error);
+    updateStatus("Error - try again", "fa-exclamation-circle", "red");
+    isAwake = false;
+    micButton.classList.remove("listening");
+  };
+
+  // Manual mic control
+  micButton.addEventListener('click', () => {
+    if (isAwake) {
+      recognition.stop();
+      isAwake = false;
+      updateStatus("Mic off", "fa-microphone-slash", "#6200ea");
+      micButton.classList.remove("listening");
+    } else {
+      recognition.start();
+      updateStatus("Say 'Spidy'", "fa-microphone-slash", "#6200ea");
+    }
+  });
+
+  // Auto-timeout
+  setInterval(() => {
+    if (Date.now() - lastActivity > 30000 && !isAwake) { // 30s timeout
+      updateStatus("Sleeping", "fa-moon", "#aaa");
+    }
+  }, 5000);
+
+  // Initial setup
+  updateStatus("Say 'Spidy'", "fa-microphone-slash", "#6200ea");
+  speak("Hello! Say 'Spidy' to activate me.");
 }
-
-// Create a theme instance
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#4caf50',
-    },
-    secondary: {
-      main: '#f44336',
-    },
-  },
-});
-
-// Render the app
-const container = document.getElementById('root');
-const root = ReactDOM.createRoot(container);
-root.render(
-  <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <App />
-    </ThemeProvider>
-  </React.StrictMode>
-);
