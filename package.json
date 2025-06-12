@@ -1,14 +1,17 @@
 {
-  "appId": "com.spidy.chatbot",
-  "appName": "Spidy",
-  "webDir": "build",
-  "plugins": {
-    "App": {
-      "launchUrl": "https://Jeevanpranav-23.github.io/spidy-chatbot"
-    }
+  "name": "spidy-chatbot",
+  "version": "1.0.0",
+  "private": true,
+  "homepage": "https://Jeevanpranav-23.github.io/spidy-chatbot",
+  "dependencies": {
+    // Keep your existing dependencies
   },
-  "server": {
-    "url": "http://localhost:3000",
-    "cleartext": true
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   }
 }
