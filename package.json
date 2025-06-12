@@ -4,11 +4,11 @@
   "private": true,
   "homepage": "https://Jeevanpranav-23.github.io/spidy-chatbot",
   "dependencies": {
-    // Keep your existing dependencies
+    // Your existing dependencies here
   },
-"scripts": {
-  "predeploy": "npm run build",
-  "deploy": "gh-pages -d build",
-  "build": "react-scripts build"
+  "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
+    "build": "react-scripts build"
+  }
 }
-
